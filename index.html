@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Serviços e Frota</title>
+    <link rel="stylesheet" href="./style.css">
+    <!-- FontAwesome para os ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="app-container">
+        <!-- Barra Lateral -->
+        <aside class="sidebar">
+            <div class="logo">Oficina System</div>
+            <nav>
+                <button class="nav-btn active" data-target="tela-kanban"><i class="fas fa-columns" aria-hidden="true"></i> Painel Kanban</button>
+                <button class="nav-btn" data-target="tela-apontamento"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Nova OS</button>
+                <button class="nav-btn" data-target="tela-relatorios"><i class="fas fa-chart-line" aria-hidden="true"></i> Relatórios Financeiros</button>
+            </nav>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            
+            <!-- TELA: KANBAN -->
+            <section id="tela-kanban" class="tela active">
+                <h2>Painel de Execução (Kanban)</h2>
+                <div class="kanban-board">
+                    <div class="coluna" id="col-pendente">
+                        <h3>Pendentes</h3>
+                        <div class="cards-container"></div>
+                    </div>
+                    <div class="coluna" id="col-em_deslocamento">
+                        <h3>Em Deslocamento</h3>
+                        <div class="cards-container"></div>
+                    </div>
+                    <div class="coluna" id="col-em_execucao">
+                        <h3>Em Execução</h3>
+                        <div class="cards-container"></div>
+                    </div>
+                    <div class="coluna" id="col-concluido">
+                        <h3>Concluídas</h3>
+                        <div class="cards-container"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TELA: ABERTURA DE OS (Com Valor de Mão de Obra) -->
+            <section id="tela-apontamento" class="tela hidden">
+                <h2>Abertura de Ordem de Serviço</h2>
+                <form id="form-os" class="formulario">
+                    <div class="form-group">
+                        <label for="osCliente">Cliente</label>
+                        <input type="text" id="osCliente" required placeholder="Ex: Mineração Vale Verde">
+                    </div>
+                    <div class="form-group">
+                        <label for="osNumero">Número da OS</label>
+                        <input type="text" id="osNumero" required placeholder="Ex: OS-1045">
+                    </div>
+                    <div class="form-group">
+                        <label for="osModelo">Modelo da Máquina</label>
+                        <input type="text" id="osModelo" required placeholder="Ex: 856H / LD20D">
+                    </div>
+                    <div class="form-group">
+                        <label for="osValorHora">Valor Mão de Obra (por Hora - R$)</label>
+                        <input type="number" id="osValorHora" step="0.01" min="0" required placeholder="150.00">
+                    </div>
+                    <button type="submit" id="btnSalvarOS" class="btn-primario">
+                        <span class="btn-texto">Criar Ordem de Serviço</span>
+                        <i class="fas fa-spinner fa-spin spinner hidden" aria-hidden="true"></i>
+                    </button>
+                </form>
+            </section>
+
+            <!-- TELA: RELATÓRIOS E FECHAMENTO -->
+            <section id="tela-relatorios" class="tela hidden">
+                <h2>Fechamento de Mês e Relatórios</h2>
+                
+                <div class="filtros-card">
+                    <div class="form-group">
+                        <label for="buscaOS">Pesquisar por OS Específica:</label>
+                        <div class="search-box">
+                            <input type="text" id="buscaOS" placeholder="Ex: OS-1045">
+                            <button id="btnBuscarRelatorio" class="btn-secundario">Buscar</button>
+                        </div>
+                    </div>
+                    <button id="btnCarregarTodas" class="btn-terciario">Ver Todas Concluídas</button>
+                </div>
+
+                <div class="tabela-container">
+                    <table id="tabelaRelatorios">
+                        <thead>
+                            <tr>
+                                <th>OS</th>
+                                <th>Cliente</th>
+                                <th>Início Execução</th>
+                                <th>Fim Execução</th>
+                                <th>Horas Trabalhadas</th>
+                                <th>Valor Hora</th>
+                                <th>Total Mão de Obra</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabelaRelatorios">
+                            <!-- Preenchido via JS -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="6" style="text-align: right; font-weight: bold;">TOTAL GERAL DO PERÍODO:</td>
+                                <td id="totalGeralRelatorio" style="font-weight: bold; color: green;">R$ 0,00</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script como Módulo (Correção Vite/Firebase) -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

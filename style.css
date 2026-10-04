@@ -1,0 +1,51 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #f4f7f6; color: #333; }
+
+#app-container { display: flex; height: 100vh; }
+
+/* Sidebar */
+.sidebar { width: 250px; background-color: #1e293b; color: #fff; display: flex; flex-direction: column; }
+.logo { font-size: 24px; font-weight: bold; padding: 20px; background-color: #0f172a; text-align: center; }
+nav { display: flex; flex-direction: column; padding: 10px 0; }
+.nav-btn { background: none; border: none; color: #cbd5e1; padding: 15px 20px; text-align: left; cursor: pointer; font-size: 16px; transition: 0.3s; }
+.nav-btn:hover, .nav-btn.active { background-color: #334155; color: #fff; border-left: 4px solid #3b82f6; }
+.nav-btn i { width: 25px; }
+
+/* Main Content */
+.main-content { flex: 1; padding: 20px; overflow-y: auto; }
+.tela { display: none; }
+.tela.active { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+h2 { margin-bottom: 20px; color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+
+/* Formulários */
+.formulario, .filtros-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+.form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+.search-box { display: flex; gap: 10px; }
+.search-box input { flex: 1; }
+
+/* Botões */
+button { border-radius: 4px; cursor: pointer; border: none; font-weight: bold; transition: 0.2s; }
+.btn-primario { background-color: #2563eb; color: white; padding: 10px 20px; font-size: 16px; width: 100%; }
+.btn-primario:hover { background-color: #1d4ed8; }
+.btn-secundario { background-color: #475569; color: white; padding: 10px 20px; }
+.btn-terciario { background-color: #e2e8f0; color: #333; padding: 10px 20px; margin-top: 10px; }
+.hidden { display: none !important; }
+
+/* Kanban Board */
+.kanban-board { display: flex; gap: 15px; height: calc(100vh - 100px); }
+.coluna { flex: 1; background-color: #e2e8f0; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; }
+.coluna h3 { font-size: 16px; text-align: center; margin-bottom: 10px; color: #475569; }
+.cards-container { flex: 1; overflow-y: auto; }
+.card-os { background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); margin-bottom: 10px; border-left: 4px solid #2563eb; }
+.card-os h4 { margin-bottom: 5px; color: #1e293b; }
+.card-os p { font-size: 14px; color: #64748b; margin-bottom: 10px; }
+.btn-avancar { background-color: #10b981; color: white; padding: 5px 10px; font-size: 12px; width: 100%; }
+
+/* Tabelas Relatório */
+.tabela-container { background: #fff; border-radius: 8px; overflow: auto; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; }
+th { background-color: #f8fafc; color: #1e293b; }
