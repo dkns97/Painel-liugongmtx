@@ -1,206 +1,380 @@
-import { db } from './firebase.js';
-import { collection, addDoc, onSnapshot, query, where, doc, updateDoc, getDocs } from "firebase/firestore";
+// --- BANCO DE DADOS LOCAL (Simulação) ---
+let usuarioLogado = localStorage.getItem('usuarioLogado');
+let ordensServico = JSON.parse(localStorage.getItem('ordensServico')) || [];
+let modelosIniciais = ["Trator de Esteira LD20D", "Pá Carregadeira 835H", "Escavadeira 922E"];
+let modelos = JSON.parse(localStorage.getItem('modelosMaquinas')) || modelosIniciais;
 
-// ========== NAVEGAÇÃO ENTRE TELAS ==========
-document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        // Remove active dos botões e telas
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tela').forEach(t => {
-            t.classList.remove('active');
-            t.classList.add('hidden');
-        });
+const credenciais = {
+    "marcos": "1234",
+    "joao": "1234",
+    "carlos": "1234",
+    "admin": "admin"
+};
 
-        // Adiciona active no clicado
-        e.currentTarget.classList.add('active');
-        const targetId = e.currentTarget.getAttribute('data-target');
-        const targetTela = document.getElementById(targetId);
-        targetTela.classList.remove('hidden');
-        targetTela.classList.add('active');
-    });
+// --- INICIALIZAÇÃO ---
+document.addEventListener("DOMContentLoaded", () => {
+    const hoje = new Date();
+    document.getElementById('filtroDataExact').value = hoje.toISOString().split('T')[0];
+    document.getElementById('filtroDataMes').value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    alternarFiltroData();
+    
+    verificarLogin();
+    carregarModelos();
 });
 
-// ========== ABERTURA DE OS ==========
-const formOS = document.getElementById('form-os');
-const btnSalvarOS = document.getElementById('btnSalvarOS');
+// --- SISTEMA DE LOGIN ---
+function verificarLogin() {
+    if (usuarioLogado) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'flex';
+        document.getElementById('user-display').innerText = "Mecânico: " + usuarioLogado.toUpperCase();
+        atualizarKanban();
+        restaurarEstadoBotoes();
+    } else {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app-screen').style.display = 'none';
+    }
+}
 
-formOS.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // UI Loading
-    const textoBtn = btnSalvarOS.querySelector('.btn-texto');
-    const spinner = btnSalvarOS.querySelector('.spinner');
-    textoBtn.textContent = 'A processar...';
-    spinner.classList.remove('hidden');
-    btnSalvarOS.disabled = true;
+window.fazerLogin = function() {
+    const usuarioDigitado = document.getElementById('loginUsuario').value.trim().toLowerCase();
+    const senhaDigitada = document.getElementById('loginSenha').value;
+    const msgErro = document.getElementById('msgErroLogin');
 
-    const osData = {
-        numero_os: document.getElementById('osNumero').value.trim(),
-        cliente: document.getElementById('osCliente').value.trim(),
-        modelo: document.getElementById('osModelo').value.trim(),
-        valor_hora: parseFloat(document.getElementById('osValorHora').value),
-        status: 'pendente', // pendente, em_deslocamento, em_execucao, concluido
-        timestamps: {
-            criadoEm: Date.now(),
-            inicioExecucao: null,
-            fimExecucao: null
-        }
+    if (credenciais[usuarioDigitado] && credenciais[usuarioDigitado] === senhaDigitada) {
+        localStorage.setItem('usuarioLogado', usuarioDigitado);
+        usuarioLogado = usuarioDigitado;
+        msgErro.style.display = 'none';
+        verificarLogin();
+    } else {
+        msgErro.style.display = 'block';
+    }
+}
+
+window.fazerLogout = function() {
+    localStorage.removeItem('usuarioLogado');
+    usuarioLogado = null;
+    document.getElementById('loginUsuario').value = "";
+    document.getElementById('loginSenha').value = "";
+    verificarLogin();
+}
+
+// --- NAVEGAÇÃO DE ABAS ---
+window.mostrarAba = function(event, abaId) {
+    if (event) event.preventDefault();
+    document.querySelectorAll('.aba-conteudo').forEach(aba => aba.classList.remove('ativa'));
+    document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
+    document.getElementById(abaId).classList.add('ativa');
+    if(event) event.currentTarget.classList.add('active');
+
+    if(abaId === 'dashboard') atualizarKanban();
+    if(abaId === 'relatorios') gerarRelatorioDesempenho();
+}
+
+// --- GERENCIAMENTO DE MODELOS ---
+function carregarModelos() {
+    const select = document.getElementById('modeloMaquina');
+    select.innerHTML = '<option value="">Selecione o equipamento...</option>';
+    modelos.forEach(modelo => {
+        const option = document.createElement('option');
+        option.value = modelo;
+        option.textContent = modelo;
+        select.appendChild(option);
+    });
+}
+
+window.adicionarNovoModelo = function() {
+    const novoModelo = prompt("Digite o nome do novo equipamento/modelo:");
+    if (novoModelo && novoModelo.trim() !== "") {
+        modelos.push(novoModelo.trim());
+        localStorage.setItem('modelosMaquinas', JSON.stringify(modelos));
+        carregarModelos();
+        document.getElementById('modeloMaquina').value = novoModelo.trim();
+    }
+}
+
+// --- CÁLCULO DE ROTAS E GPS (SIMULAÇÃO) ---
+window.calcularRotas = function() {
+    const saida = document.getElementById('localSaida').value;
+    const destino = document.getElementById('localServico').value;
+    const inputTempo = document.getElementById('gpsTempo');
+    const inputKm = document.getElementById('gpsKm');
+
+    if (saida.trim() !== "" && destino.trim() !== "") {
+        inputTempo.value = "...";
+        inputKm.value = "...";
+        
+        setTimeout(() => {
+            const kmSimulado = Math.floor(Math.random() * (120 - 15 + 1)) + 15;
+            const tempoSimulado = Math.floor(kmSimulado * 1.2); 
+            inputKm.value = kmSimulado + " km";
+            inputTempo.value = tempoSimulado + " min";
+        }, 800);
+    } else {
+        inputTempo.value = "";
+        inputKm.value = "";
+    }
+}
+
+// --- LÓGICA DE APONTAMENTO E FROTA ---
+window.iniciarDeslocamento = function() {
+    if(!validarFormularioSaida()) return;
+
+    const novaOs = {
+        id: Date.now().toString(),
+        numeroOS: document.getElementById('numeroOS').value.toUpperCase(),
+        mecanico: usuarioLogado,
+        cliente: document.getElementById('nomeCliente').value,
+        localSaida: document.getElementById('localSaida').value,
+        localServico: document.getElementById('localServico').value,
+        gpsKmPrevisto: document.getElementById('gpsKm').value,
+        odometroPartida: parseFloat(document.getElementById('odometroPartida').value),
+        odometroChegada: null,
+        kmRealRodado: 0,
+        modelo: document.getElementById('modeloMaquina').value,
+        tipo: document.getElementById('tipoManutencao').value,
+        status: 'deslocamento',
+        horaInicioDeslocamento: new Date().toISOString(),
+        horaInicioServico: null,
+        horaFimServico: null
     };
 
-    try {
-        await addDoc(collection(db, "ordens_servico"), osData);
-        alert('OS Criada com sucesso!');
-        formOS.reset();
-    } catch (error) {
-        console.error("Erro ao adicionar OS: ", error);
-        alert('Erro ao criar OS.');
-    } finally {
-        // Restaurar botão
-        textoBtn.textContent = 'Criar Ordem de Serviço';
-        spinner.classList.add('hidden');
-        btnSalvarOS.disabled = false;
+    ordensServico.push(novaOs);
+    salvarBanco();
+    document.getElementById('osIdAtual').value = novaOs.id;
+    
+    mudarEstadoBotoes('deslocamento');
+    atualizarKanban();
+}
+
+window.iniciarServico = function() {
+    const idAtual = document.getElementById('osIdAtual').value;
+    const os = ordensServico.find(o => o.id === idAtual);
+    const odoChegada = document.getElementById('odometroChegada').value;
+
+    if(!odoChegada || odoChegada === "") {
+        alert("Obrigatório informar o Odômetro de Chegada na obra antes de iniciar o serviço!");
+        return;
     }
-});
 
-// ========== KANBAN EM TEMPO REAL ==========
-const colunas = {
-    pendente: document.querySelector('#col-pendente .cards-container'),
-    em_deslocamento: document.querySelector('#col-em_deslocamento .cards-container'),
-    em_execucao: document.querySelector('#col-em_execucao .cards-container'),
-    concluido: document.querySelector('#col-concluido .cards-container')
-};
+    if(parseFloat(odoChegada) < os.odometroPartida) {
+        alert("O odômetro de chegada não pode ser menor que o de partida!");
+        return;
+    }
+    
+    if(os) {
+        os.odometroChegada = parseFloat(odoChegada);
+        os.kmRealRodado = os.odometroChegada - os.odometroPartida;
+        os.status = 'execucao';
+        os.horaInicioServico = new Date().toISOString();
+        salvarBanco();
+        mudarEstadoBotoes('execucao');
+        atualizarKanban();
+    }
+}
 
-// Escuta alterações na coleção "ordens_servico"
-onSnapshot(collection(db, "ordens_servico"), (snapshot) => {
-    // Limpar colunas
-    Object.values(colunas).forEach(col => col.innerHTML = '');
+window.finalizarServico = function() {
+    const idAtual = document.getElementById('osIdAtual').value;
+    const os = ordensServico.find(o => o.id === idAtual);
+    
+    if(os) {
+        os.obs = document.getElementById('obsTecnicas').value;
+        os.status = 'concluido';
+        os.horaFimServico = new Date().toISOString();
+        
+        salvarBanco();
+        mudarEstadoBotoes('concluido');
+        document.getElementById('form-os').reset();
+        document.getElementById('localSaida').value = "Oficina MTX"; 
+        document.getElementById('osIdAtual').value = "";
+        atualizarKanban();
+        alert("OS Finalizada com sucesso! Dados de frota registrados.");
+    }
+}
 
-    snapshot.forEach((docSnap) => {
-        const os = docSnap.data();
-        const id = docSnap.id;
+function validarFormularioSaida() {
+    const numOs = document.getElementById('numeroOS').value;
+    const cliente = document.getElementById('nomeCliente').value;
+    const destino = document.getElementById('localServico').value;
+    const modelo = document.getElementById('modeloMaquina').value;
+    const odoPartida = document.getElementById('odometroPartida').value;
+    
+    if(!numOs || !cliente || !destino || !modelo || !odoPartida) {
+        alert("Preencha todos os dados básicos da OS, Destino e o Odômetro de Partida!");
+        return false;
+    }
+    return true;
+}
+
+function mudarEstadoBotoes(estado) {
+    const bloquearGeral = (estado === 'deslocamento' || estado === 'execucao');
+    
+    document.getElementById('numeroOS').disabled = bloquearGeral;
+    document.getElementById('nomeCliente').disabled = bloquearGeral;
+    document.getElementById('localSaida').disabled = bloquearGeral;
+    document.getElementById('localServico').disabled = bloquearGeral;
+    document.getElementById('modeloMaquina').disabled = bloquearGeral;
+    document.getElementById('tipoManutencao').disabled = bloquearGeral;
+    document.getElementById('odometroPartida').disabled = bloquearGeral;
+
+    const btnD = document.getElementById('btnDeslocamento');
+    const btnI = document.getElementById('btnIniciar');
+    const btnF = document.getElementById('btnFinalizar');
+    const inputOdoChegada = document.getElementById('odometroChegada');
+    
+    if(estado === 'deslocamento') {
+        btnD.disabled = true; btnI.disabled = false; btnF.disabled = true;
+        inputOdoChegada.disabled = false;
+    } else if(estado === 'execucao') {
+        btnD.disabled = true; btnI.disabled = true; btnF.disabled = false;
+        inputOdoChegada.disabled = true;
+    } else {
+        btnD.disabled = false; btnI.disabled = true; btnF.disabled = true;
+        inputOdoChegada.disabled = true;
+    }
+}
+
+function restaurarEstadoBotoes() {
+    const osAberta = ordensServico.find(o => o.mecanico === usuarioLogado && o.status !== 'concluido');
+    if(osAberta) {
+        document.getElementById('numeroOS').value = osAberta.numeroOS;
+        document.getElementById('nomeCliente').value = osAberta.cliente;
+        document.getElementById('localSaida').value = osAberta.localSaida;
+        document.getElementById('localServico').value = osAberta.localServico;
+        document.getElementById('gpsKm').value = osAberta.gpsKmPrevisto || '';
+        document.getElementById('modeloMaquina').value = osAberta.modelo;
+        document.getElementById('tipoManutencao').value = osAberta.tipo;
+        document.getElementById('odometroPartida').value = osAberta.odometroPartida;
+        document.getElementById('odometroChegada').value = osAberta.odometroChegada || '';
+        document.getElementById('osIdAtual').value = osAberta.id;
+        mudarEstadoBotoes(osAberta.status);
+    } else {
+        mudarEstadoBotoes('inicial');
+    }
+}
+
+function salvarBanco() { localStorage.setItem('ordensServico', JSON.stringify(ordensServico)); }
+
+// --- LÓGICA DO KANBAN ---
+function atualizarKanban() {
+    document.getElementById('lista-deslocamento').innerHTML = "";
+    document.getElementById('lista-execucao').innerHTML = "";
+    document.getElementById('lista-concluido').innerHTML = "";
+    const hoje = new Date().toDateString();
+
+    ordensServico.forEach(os => {
+        const dataOS = new Date(os.horaInicioDeslocamento).toDateString();
+        if(dataOS !== hoje && os.status === 'concluido') return;
+
+        const infoRota = `${os.localSaida.split(' ')[0]} <i class="fas fa-arrow-right"></i> ${os.localServico}`;
         
         const card = document.createElement('div');
-        card.className = 'card-os';
+        card.className = 'kanban-card';
         card.innerHTML = `
-            <h4>${os.numero_os}</h4>
-            <p><strong>Cliente:</strong> ${os.cliente}<br><strong>Modelo:</strong> ${os.modelo}</p>
-            ${gerarBotaoAcao(os.status, id)}
+            <h4><span style="color: #666; font-size: 0.8rem;">[${os.numeroOS}]</span> ${os.cliente}</h4>
+            <p style="font-size: 0.8rem; margin-bottom: 8px;">${infoRota}</p>
+            <p><i class="fas fa-tractor"></i> ${os.modelo}</p>
+            <p><i class="fas fa-user-wrench"></i> <strong>${os.mecanico.toUpperCase()}</strong></p>
         `;
-        
-        // Coloca o card na coluna correspondente
-        if (colunas[os.status]) {
-            colunas[os.status].appendChild(card);
+
+        if(os.status === 'deslocamento') {
+            card.style.borderLeftColor = "var(--secondary-color)";
+            document.getElementById('lista-deslocamento').appendChild(card);
+        } else if (os.status === 'execucao') {
+            card.style.borderLeftColor = "var(--info)";
+            document.getElementById('lista-execucao').appendChild(card);
+        } else if (os.status === 'concluido') {
+            card.style.borderLeftColor = "var(--success)";
+            document.getElementById('lista-concluido').appendChild(card);
         }
     });
-});
-
-// Lógica de progressão das OS no Kanban
-function gerarBotaoAcao(status, id) {
-    if (status === 'pendente') return `<button class="btn-avancar" onclick="avancarOS('${id}', 'em_deslocamento')">Iniciar Deslocamento</button>`;
-    if (status === 'em_deslocamento') return `<button class="btn-avancar" onclick="avancarOS('${id}', 'em_execucao')">Cheguei - Iniciar Execução</button>`;
-    if (status === 'em_execucao') return `<button class="btn-avancar" style="background-color: #ef4444;" onclick="avancarOS('${id}', 'concluido')">Finalizar Serviço</button>`;
-    return `<span style="color: green; font-weight: bold;"><i class="fas fa-check"></i> Concluído</span>`;
 }
 
-window.avancarOS = async (id, novoStatus) => {
-    const osRef = doc(db, "ordens_servico", id);
-    let atualizacoes = { status: novoStatus };
-
-    // Capturar tempo de Início e Fim para cálculos financeiros
-    if (novoStatus === 'em_execucao') {
-        atualizacoes['timestamps.inicioExecucao'] = Date.now();
-    } else if (novoStatus === 'concluido') {
-        atualizacoes['timestamps.fimExecucao'] = Date.now();
-    }
-
-    try {
-        await updateDoc(osRef, atualizacoes);
-    } catch (error) {
-        console.error("Erro ao atualizar status:", error);
-    }
-};
-
-// ========== RELATÓRIOS E FECHAMENTO FINANCEIRO ==========
-const btnBuscarRelatorio = document.getElementById('btnBuscarRelatorio');
-const btnCarregarTodas = document.getElementById('btnCarregarTodas');
-const corpoTabela = document.getElementById('corpoTabelaRelatorios');
-const textoTotalGeral = document.getElementById('totalGeralRelatorio');
-
-const formataMoeda = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-
-const formataData = (timestamp) => {
-    if (!timestamp) return '-';
-    return new Date(timestamp).toLocaleString('pt-BR');
-};
-
-async function gerarRelatorio(numeroOSBusca = null) {
-    corpoTabela.innerHTML = '<tr><td colspan="7" style="text-align: center;">Carregando dados...</td></tr>';
-    let totalGeral = 0;
-
-    try {
-        let q;
-        const osRef = collection(db, "ordens_servico");
-
-        if (numeroOSBusca) {
-            // Busca uma OS específica (case sensitive no banco)
-            q = query(osRef, where("numero_os", "==", numeroOSBusca));
-        } else {
-            // Busca todas as concluídas para o fecho mensal
-            q = query(osRef, where("status", "==", "concluido"));
-        }
-
-        const querySnapshot = await getDocs(q);
-        corpoTabela.innerHTML = '';
-
-        if (querySnapshot.empty) {
-            corpoTabela.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhuma OS encontrada.</td></tr>';
-            textoTotalGeral.textContent = 'R$ 0,00';
-            return;
-        }
-
-        querySnapshot.forEach((docSnap) => {
-            const os = docSnap.data();
-            let horasTrabalhadas = 0;
-            let totalMaoDeObra = 0;
-
-            // Calcula o tempo se tiver data de início e fim
-            if (os.timestamps && os.timestamps.inicioExecucao && os.timestamps.fimExecucao) {
-                const difMilissegundos = os.timestamps.fimExecucao - os.timestamps.inicioExecucao;
-                horasTrabalhadas = difMilissegundos / (1000 * 60 * 60);
-                totalMaoDeObra = horasTrabalhadas * os.valor_hora;
-            }
-
-            totalGeral += totalMaoDeObra;
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${os.numero_os}</strong></td>
-                <td>${os.cliente}</td>
-                <td>${formataData(os.timestamps?.inicioExecucao)}</td>
-                <td>${formataData(os.timestamps?.fimExecucao)}</td>
-                <td>${horasTrabalhadas.toFixed(2)}h</td>
-                <td>${formataMoeda(os.valor_hora)}</td>
-                <td style="color: green; font-weight: bold;">${formataMoeda(totalMaoDeObra)}</td>
-            `;
-            corpoTabela.appendChild(tr);
-        });
-
-        // Atualiza o rodapé com o somatório de todas as OS geradas na tela
-        textoTotalGeral.textContent = formataMoeda(totalGeral);
-
-    } catch (error) {
-        console.error("Erro ao gerar relatório:", error);
-        corpoTabela.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Erro ao consultar banco de dados.</td></tr>';
+// --- RELATÓRIOS INTELIGENTES (DIA/SEMANA/MÊS) ---
+window.alternarFiltroData = function() {
+    const tipo = document.getElementById('tipoFiltroRelatorio').value;
+    if(tipo === 'mes') {
+        document.getElementById('containerDataDiaria').style.display = 'none';
+        document.getElementById('containerDataMensal').style.display = 'flex';
+    } else {
+        document.getElementById('containerDataDiaria').style.display = 'flex';
+        document.getElementById('containerDataMensal').style.display = 'none';
     }
 }
 
-// Botões de Relatório
-btnBuscarRelatorio.addEventListener('click', () => {
-    const busca = document.getElementById('buscaOS').value.trim();
-    if (busca) gerarRelatorio(busca);
-});
+window.gerarRelatorioDesempenho = function() {
+    const tipoFiltro = document.getElementById('tipoFiltroRelatorio').value;
+    const dataExact = new Date(document.getElementById('filtroDataExact').value + "T00:00:00");
+    const dataMesStr = document.getElementById('filtroDataMes').value; 
+    const tbody = document.getElementById('tabela-relatorio-desempenho');
+    tbody.innerHTML = "";
 
-btnCarregarTodas.addEventListener('click', () => {
-    document.getElementById('buscaOS').value = '';
-    gerarRelatorio(); // Carrega todas as concluídas
-});
+    const osFiltradas = ordensServico.filter(os => {
+        if (os.status !== 'concluido') return false;
+        const dFim = new Date(os.horaFimServico);
+
+        if (tipoFiltro === 'dia') {
+            return dFim.toDateString() === dataExact.toDateString();
+        } 
+        else if (tipoFiltro === 'semana') {
+            // Calcula o início (Domingo) e fim (Sábado) da semana da data selecionada
+            const diaSemana = dataExact.getDay();
+            const inicioSemana = new Date(dataExact);
+            inicioSemana.setDate(dataExact.getDate() - diaSemana);
+            inicioSemana.setHours(0,0,0,0);
+            const fimSemana = new Date(inicioSemana);
+            fimSemana.setDate(inicioSemana.getDate() + 6);
+            fimSemana.setHours(23,59,59,999);
+            return dFim >= inicioSemana && dFim <= fimSemana;
+        } 
+        else if (tipoFiltro === 'mes') {
+            const osMes = `${dFim.getFullYear()}-${String(dFim.getMonth() + 1).padStart(2, '0')}`;
+            return osMes === dataMesStr;
+        }
+        return false;
+    });
+
+    const resumo = {};
+
+    osFiltradas.forEach(os => {
+        const mec = os.mecanico;
+        if (!resumo[mec]) {
+            resumo[mec] = { totalOS: 0, kmTotal: 0, msDesloc: 0, msExec: 0 };
+        }
+
+        resumo[mec].totalOS += 1;
+        resumo[mec].kmTotal += (os.kmRealRodado || 0);
+        
+        const dDesl = new Date(os.horaInicioDeslocamento);
+        const dServ = new Date(os.horaInicioServico);
+        const dFim = new Date(os.horaFimServico);
+
+        resumo[mec].msDesloc += (dServ - dDesl);
+        resumo[mec].msExec += (dFim - dServ);
+    });
+
+    Object.keys(resumo).forEach(nome => {
+        const d = resumo[nome];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="text-transform: capitalize;"><strong>${nome}</strong></td>
+            <td>${d.totalOS}</td>
+            <td><strong>${d.kmTotal.toFixed(1)} km</strong></td>
+            <td>${converterMsParaHoras(d.msDesloc)}</td>
+            <td>${converterMsParaHoras(d.msExec)}</td>
+            <td style="color: var(--primary-color);"><strong>${converterMsParaHoras(d.msDesloc + d.msExec)}</strong></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if(Object.keys(resumo).length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">Nenhum serviço finalizado neste período.</td></tr>`;
+    }
+}
+
+function converterMsParaHoras(ms) {
+    const diffMins = Math.floor(ms / 60000);
+    const horas = Math.floor(diffMins / 60);
+    const minutos = diffMins % 60;
+    return `${horas}h ${minutos}m`;
+}

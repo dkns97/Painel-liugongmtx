@@ -3,121 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Serviços e Frota</title>
-    <link rel="stylesheet" href="./style.css">
-    <!-- FontAwesome para os ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Gestão de Campo e Frota - MTX</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div id="app-container">
-        <!-- Barra Lateral -->
-        <aside class="sidebar">
-            <div class="logo">Oficina System</div>
-            <nav>
-                <button class="nav-btn active" data-target="tela-kanban"><i class="fas fa-columns" aria-hidden="true"></i> Painel Kanban</button>
-                <button class="nav-btn" data-target="tela-apontamento"><i class="fas fa-clipboard-list" aria-hidden="true"></i> Nova OS</button>
-                <button class="nav-btn" data-target="tela-relatorios"><i class="fas fa-chart-line" aria-hidden="true"></i> Relatórios Financeiros</button>
-            </nav>
-        </aside>
 
-        <!-- Área Principal -->
-        <main class="main-content">
-            
-            <!-- TELA: KANBAN -->
-            <section id="tela-kanban" class="tela active">
-                <h2>Painel de Execução (Kanban)</h2>
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen" class="login-container">
+        <div class="login-box">
+            <h2><i class="fas fa-tractor"></i> Oficina MTX</h2>
+            <p>Acesso Restrito ao Sistema</p>
+            <div class="form-group">
+                <label>Usuário</label>
+                <input type="text" id="loginUsuario" placeholder="Ex: marcos" required>
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="loginSenha" placeholder="Digite sua senha" required>
+            </div>
+            <button onclick="fazerLogin()" class="btn-primary">Entrar</button>
+            <p id="msgErroLogin" style="color: red; display: none; margin-top: 10px; font-size: 0.9rem;">Usuário ou senha incorretos.</p>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL -->
+    <div id="app-screen" style="display: none;">
+        <nav class="sidebar">
+            <div class="logo-area">
+                <h2><i class="fas fa-tractor"></i> MTX Campo</h2>
+                <p id="user-display" style="font-size: 0.8rem; color: #ccc; margin-top: 5px;"></p>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" onclick="mostrarAba(event, 'dashboard')" class="active"><i class="fas fa-chart-pie"></i> Painel Kanban</a></li>
+                <li><a href="#" onclick="mostrarAba(event, 'apontamento')"><i class="fas fa-stopwatch"></i> Apontamento & Frota</a></li>
+                <li><a href="#" onclick="mostrarAba(event, 'relatorios')"><i class="fas fa-chart-line"></i> Relatórios de Gestão</a></li>
+                <li style="margin-top: auto;"><a href="#" onclick="fazerLogout()" style="color: #ff6b6b;"><i class="fas fa-sign-out-alt"></i> Sair</a></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <!-- ABA: KANBAN -->
+            <section id="dashboard" class="aba-conteudo ativa">
+                <header>
+                    <h1>Monitoramento da Equipe</h1>
+                    <p>Status das ordens de serviço e rastreamento de frota.</p>
+                </header>
                 <div class="kanban-board">
-                    <div class="coluna" id="col-pendente">
-                        <h3>Pendentes</h3>
-                        <div class="cards-container"></div>
+                    <div class="coluna">
+                        <h3 style="border-bottom: 3px solid #f39c12;"><i class="fas fa-route"></i> Em Deslocamento</h3>
+                        <div id="lista-deslocamento" class="lista-cards"></div>
                     </div>
-                    <div class="coluna" id="col-em_deslocamento">
-                        <h3>Em Deslocamento</h3>
-                        <div class="cards-container"></div>
+                    <div class="coluna">
+                        <h3 style="border-bottom: 3px solid #3498db;"><i class="fas fa-tools"></i> Em Execução</h3>
+                        <div id="lista-execucao" class="lista-cards"></div>
                     </div>
-                    <div class="coluna" id="col-em_execucao">
-                        <h3>Em Execução</h3>
-                        <div class="cards-container"></div>
-                    </div>
-                    <div class="coluna" id="col-concluido">
-                        <h3>Concluídas</h3>
-                        <div class="cards-container"></div>
+                    <div class="coluna">
+                        <h3 style="border-bottom: 3px solid #2ecc71;"><i class="fas fa-check-circle"></i> Concluído</h3>
+                        <div id="lista-concluido" class="lista-cards"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- TELA: ABERTURA DE OS (Com Valor de Mão de Obra) -->
-            <section id="tela-apontamento" class="tela hidden">
-                <h2>Abertura de Ordem de Serviço</h2>
-                <form id="form-os" class="formulario">
-                    <div class="form-group">
-                        <label for="osCliente">Cliente</label>
-                        <input type="text" id="osCliente" required placeholder="Ex: Mineração Vale Verde">
-                    </div>
-                    <div class="form-group">
-                        <label for="osNumero">Número da OS</label>
-                        <input type="text" id="osNumero" required placeholder="Ex: OS-1045">
-                    </div>
-                    <div class="form-group">
-                        <label for="osModelo">Modelo da Máquina</label>
-                        <input type="text" id="osModelo" required placeholder="Ex: 856H / LD20D">
-                    </div>
-                    <div class="form-group">
-                        <label for="osValorHora">Valor Mão de Obra (por Hora - R$)</label>
-                        <input type="number" id="osValorHora" step="0.01" min="0" required placeholder="150.00">
-                    </div>
-                    <button type="submit" id="btnSalvarOS" class="btn-primario">
-                        <span class="btn-texto">Criar Ordem de Serviço</span>
-                        <i class="fas fa-spinner fa-spin spinner hidden" aria-hidden="true"></i>
-                    </button>
-                </form>
-            </section>
-
-            <!-- TELA: RELATÓRIOS E FECHAMENTO -->
-            <section id="tela-relatorios" class="tela hidden">
-                <h2>Fechamento de Mês e Relatórios</h2>
-                
-                <div class="filtros-card">
-                    <div class="form-group">
-                        <label for="buscaOS">Pesquisar por OS Específica:</label>
-                        <div class="search-box">
-                            <input type="text" id="buscaOS" placeholder="Ex: OS-1045">
-                            <button id="btnBuscarRelatorio" class="btn-secundario">Buscar</button>
+            <!-- ABA: APONTAMENTO -->
+            <section id="apontamento" class="aba-conteudo">
+                <header>
+                    <h1>Apontamento de Serviço e Rota</h1>
+                    <p>Registre os dados da manutenção e a telemetria do veículo.</p>
+                </header>
+                <div class="card-formulario">
+                    <form id="form-os">
+                        <!-- DADOS GERAIS -->
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 0.5;">
+                                <label>Número da OS</label>
+                                <input type="text" id="numeroOS" required placeholder="Ex: OS-1054" style="font-weight: bold;">
+                            </div>
+                            <div class="form-group">
+                                <label>Cliente</label>
+                                <input type="text" id="nomeCliente" required placeholder="Ex: Construtora Alfa">
+                            </div>
                         </div>
+
+                        <!-- ROTEIRIZAÇÃO -->
+                        <div class="form-row" style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                            <div class="form-group">
+                                <label>Local de Saída</label>
+                                <input type="text" id="localSaida" required value="Oficina MTX" onblur="calcularRotas()">
+                            </div>
+                            <div class="form-group">
+                                <label>Local do Serviço (Obra)</label>
+                                <input type="text" id="localServico" required placeholder="Endereço da máquina" onblur="calcularRotas()">
+                            </div>
+                            <div class="form-group" style="flex: 0.5;">
+                                <label>GPS Estimado</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <input type="text" id="gpsTempo" placeholder="Tempo" disabled style="background: #e9ecef; font-weight: bold; text-align: center; width: 50%;">
+                                    <input type="text" id="gpsKm" placeholder="Km" disabled style="background: #e9ecef; font-weight: bold; text-align: center; width: 50%;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CONTROLE DE FROTA (ODÔMETRO) -->
+                        <div class="form-row" style="background: #eef2f5; padding: 15px; border-radius: 6px; border-left: 4px solid var(--secondary-color); margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Odômetro de Partida (Km)</label>
+                                <input type="number" id="odometroPartida" required placeholder="Km ao sair da base">
+                            </div>
+                            <div class="form-group">
+                                <label>Odômetro de Chegada (Km)</label>
+                                <input type="number" id="odometroChegada" placeholder="Preencha ao chegar na obra" disabled>
+                            </div>
+                        </div>
+
+                        <!-- DADOS DA MÁQUINA -->
+                        <div class="form-row" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Equipamento / Máquina</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <select id="modeloMaquina" required style="flex: 1;"></select>
+                                    <button type="button" onclick="adicionarNovoModelo()" class="btn-secondary" title="Adicionar Novo Modelo"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Manutenção</label>
+                                <select id="tipoManutencao" required>
+                                    <option value="Revisão 250h">Revisão 250 h</option>
+                                    <option value="Revisão 500h">Revisão 500 h</option>
+                                    <option value="Revisão 750h">Revisão 750 h</option>
+                                    <option value="Revisão 1000h">Revisão 1000 horas</option>
+                                    <option value="Revisão 1500h">Revisão 1500 horas</option>
+                                    <option value="Revisão 2000h">Revisão 2000 horas</option>
+                                    <option value="Corretiva">Revisão Corretiva</option>
+                                    <option value="Garantia">Manutenção em Garantia</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Sintoma / Diagnóstico / Observações</label>
+                            <textarea id="obsTecnicas" rows="3" placeholder="Descreva o problema encontrado ou serviço realizado..."></textarea>
+                        </div>
+
+                        <input type="hidden" id="osIdAtual">
+
+                        <div class="action-buttons">
+                            <button type="button" class="btn-warning" id="btnDeslocamento" onclick="iniciarDeslocamento()">
+                                <i class="fas fa-truck"></i> INICIAR DESLOCAMENTO
+                            </button>
+                            <button type="button" class="btn-play" id="btnIniciar" onclick="iniciarServico()" disabled>
+                                <i class="fas fa-play"></i> REGISTRAR CHEGADA & INICIAR SERVIÇO
+                            </button>
+                            <button type="button" class="btn-stop" id="btnFinalizar" onclick="finalizarServico()" disabled>
+                                <i class="fas fa-stop"></i> FINALIZAR SERVIÇO
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ABA: RELATÓRIOS -->
+            <section id="relatorios" class="aba-conteudo">
+                <header>
+                    <h1>Desempenho e Rastreamento</h1>
+                    <p>Controle de horas trabalhadas e quilometragem percorrida da frota.</p>
+                </header>
+                
+                <div class="form-row" style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,0.05);">
+                    <div class="form-group" style="flex: 0.3;">
+                        <label>Período de Análise</label>
+                        <select id="tipoFiltroRelatorio" onchange="alternarFiltroData(); gerarRelatorioDesempenho()">
+                            <option value="dia">Por Dia Específico</option>
+                            <option value="semana">Por Semana</option>
+                            <option value="mes" selected>Por Mês</option>
+                        </select>
                     </div>
-                    <button id="btnCarregarTodas" class="btn-terciario">Ver Todas Concluídas</button>
+                    <div class="form-group" style="flex: 0.3;" id="containerDataDiaria">
+                        <label>Data</label>
+                        <input type="date" id="filtroDataExact" onchange="gerarRelatorioDesempenho()">
+                    </div>
+                    <div class="form-group" style="flex: 0.3; display: none;" id="containerDataMensal">
+                        <label>Mês</label>
+                        <input type="month" id="filtroDataMes" onchange="gerarRelatorioDesempenho()">
+                    </div>
                 </div>
 
-                <div class="tabela-container">
-                    <table id="tabelaRelatorios">
+                <div class="card-formulario" style="overflow-x: auto;">
+                    <table class="report-table">
                         <thead>
                             <tr>
-                                <th>OS</th>
-                                <th>Cliente</th>
-                                <th>Início Execução</th>
-                                <th>Fim Execução</th>
-                                <th>Horas Trabalhadas</th>
-                                <th>Valor Hora</th>
-                                <th>Total Mão de Obra</th>
+                                <th>Mecânico</th>
+                                <th>Total de OS</th>
+                                <th>Km Rodado (Real)</th>
+                                <th>Tempo Deslocamento</th>
+                                <th>Tempo em Serviço</th>
+                                <th>Horas Totais</th>
                             </tr>
                         </thead>
-                        <tbody id="corpoTabelaRelatorios">
+                        <tbody id="tabela-relatorio-desempenho">
                             <!-- Preenchido via JS -->
                         </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="6" style="text-align: right; font-weight: bold;">TOTAL GERAL DO PERÍODO:</td>
-                                <td id="totalGeralRelatorio" style="font-weight: bold; color: green;">R$ 0,00</td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </section>
-
         </main>
     </div>
 
-    <!-- Script como Módulo (Correção Vite/Firebase) -->
-    <script type="module" src="./app.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
